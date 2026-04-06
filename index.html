@@ -99,14 +99,36 @@
         var params = new URLSearchParams(window.location.search);
         var loginUrl = params.get('login_url') || '';
         var ssid = params.get('ssid') || '';
+        var apMac = params.get('ap_mac') || '';
         var ua = navigator.userAgent || '';
         var isAndroid = /android/i.test(ua);
         var menuUrl = 'http://1cinemas.co.in/POP/OrderPortal/start';
         var goUrl = 'https://1cinemas.netlify.app/go.html';
 
+        // --- DNS FIX ---
+        // cwp.gwnportal.cloud resolves to a public IP where port 8080
+        // is closed. Replace with the AP's actual local IP using ap_mac.
+        // NOTE: Set static DHCP reservations on Sophos for these MACs.
+        var apIpMap = {
+          'EC-74-D7-27-A5-DC': '10.0.0.148',
+          'EC-74-D7-27-A8-C8': '10.0.0.155',
+          'EC-74-D7-27-B2-18': '10.0.0.156',
+          'EC-74-D7-21-E8-18': '10.0.0.162',
+          'EC-74-D7-27-A7-C0': '10.0.0.163',
+          'EC-74-D7-27-A5-34': '10.0.0.164'
+        };
+        var apIp = apIpMap[apMac] || '';
+        if (apIp && loginUrl.indexOf('cwp.gwnportal.cloud') !== -1) {
+          loginUrl = loginUrl.replace('cwp.gwnportal.cloud', apIp);
+          log('<b style="color:cyan">DNS FIX: replaced cwp.gwnportal.cloud → ' + apIp + '</b>');
+        } else if (!apIp && apMac) {
+          log('<b style="color:red">WARNING: ap_mac ' + apMac + ' not in IP map!</b>');
+        }
+
         log('isAndroid: <b>' + isAndroid + '</b>');
         log('login_url: <b>' + (loginUrl || 'EMPTY') + '</b>');
         log('ssid: ' + (ssid || 'EMPTY'));
+        log('ap_mac: ' + (apMac || 'EMPTY'));
 
         // --- CONNECTIVITY TEST ---
         // Check if login_url is reachable BEFORE user taps anything
