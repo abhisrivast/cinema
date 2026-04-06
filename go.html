@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      // This page loads AFTER authentication is complete.
+      // Fire intent INSTANTLY — before Android kills the WebView.
+      // No delay, no body render, no waiting.
+      var ua = navigator.userAgent || '';
+      if (/android/i.test(ua)) {
+        window.location.replace(
+          'intent://1cinemas.co.in/POP/OrderPortal/start#Intent;scheme=http;package=com.android.chrome;end',
+        );
+      } else {
+        window.location.replace('http://1cinemas.co.in/POP/OrderPortal/start');
+      }
+    </script>
+  </head>
+  <body></body>
+</html>

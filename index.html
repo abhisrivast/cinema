@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <title>1 Cinemas WiFi</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #1a1a2e;
+        color: #ffffff;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+      }
+      .container {
+        max-width: 360px;
+        width: 100%;
+      }
+      .logo {
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+      }
+      .subtitle {
+        color: #888;
+        font-size: 14px;
+        margin-bottom: 48px;
+      }
+      .btn {
+        display: block;
+        width: 100%;
+        padding: 18px 24px;
+        margin: 14px 0;
+        border: none;
+        border-radius: 14px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .btn:active {
+        transform: scale(0.97);
+      }
+      .btn-menu {
+        background: #e50914;
+        color: #ffffff;
+      }
+      .btn-wifi {
+        background: #2a2a3e;
+        color: #aaa;
+        border: 1px solid #333;
+      }
+      .note {
+        color: #555;
+        font-size: 12px;
+        margin-top: 28px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">1 Cinemas</div>
+      <p class="subtitle">Free WiFi</p>
+      <button class="btn btn-menu" id="menuBtn">Open Food &amp; Drinks Menu</button>
+      <button class="btn btn-wifi" id="wifiBtn">Just Connect WiFi</button>
+      <p class="note">WiFi connects automatically when you open the menu</p>
+    </div>
+
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var loginUrl = params.get('login_url') || '';
+        var ssid = params.get('ssid') || '';
+        var ua = navigator.userAgent || '';
+        var isAndroid = /android/i.test(ua);
+
+        var menuUrl = 'http://1cinemas.co.in/POP/OrderPortal/start';
+        // go.html on same Netlify site — fires intent instantly after auth
+        var goUrl = 'https://timely-meerkat-136a6b.netlify.app/go.html';
+
+        function buildAuthUrl(redirectTo) {
+          if (!loginUrl) return '';
+          return (
+            loginUrl +
+            '?username=' +
+            encodeURIComponent('guest') +
+            '&password=' +
+            encodeURIComponent('guest') +
+            '&redirect=' +
+            encodeURIComponent(redirectTo) +
+            '&ssid=' +
+            encodeURIComponent(ssid)
+          );
+        }
+
+        // OPEN MENU
+        document.getElementById('menuBtn').addEventListener('click', function () {
+          if (!loginUrl) return;
+
+          if (isAndroid) {
+            // Navigate to auth URL
+            // After AP authenticates, it redirects to go.html
+            // go.html fires intent:// instantly in <head> to open Chrome
+            window.location.href = buildAuthUrl(goUrl);
+          } else {
+            // iOS: auth then redirect straight to menu (CNA stays open)
+            window.location.href = buildAuthUrl(menuUrl);
+          }
+        });
+
+        // JUST WIFI
+        document.getElementById('wifiBtn').addEventListener('click', function () {
+          if (!loginUrl) return;
+          // Auth with empty redirect — just connects WiFi
+          window.location.href = buildAuthUrl('');
+        });
+
+        console.log('login_url:', loginUrl);
+        console.log('isAndroid:', isAndroid);
+      })();
+    </script>
+  </body>
+</html>
