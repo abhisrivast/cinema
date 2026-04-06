@@ -6,85 +6,39 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <title>1 Cinemas WiFi</title>
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: #1a1a2e;
-        color: #ffffff;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        padding: 24px;
+        background: #1a1a2e; color: #ffffff;
+        min-height: 100vh; display: flex; align-items: center;
+        justify-content: center; text-align: center; padding: 24px;
       }
-      .container {
-        max-width: 360px;
-        width: 100%;
-      }
-      .logo {
-        font-size: 32px;
-        font-weight: 700;
-        letter-spacing: 1px;
-        margin-bottom: 6px;
-      }
-      .subtitle {
-        color: #888;
-        font-size: 14px;
-        margin-bottom: 48px;
-      }
+      .container { max-width: 360px; width: 100%; }
+      .logo { font-size: 32px; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px; }
+      .subtitle { color: #888; font-size: 14px; margin-bottom: 48px; }
       .btn {
-        display: block;
-        width: 100%;
-        padding: 18px 24px;
-        margin: 14px 0;
-        border: none;
-        border-radius: 14px;
-        font-size: 18px;
-        font-weight: 600;
-        cursor: pointer;
-        -webkit-tap-highlight-color: transparent;
+        display: block; width: 100%; padding: 18px 24px; margin: 14px 0;
+        border: none; border-radius: 14px; font-size: 18px; font-weight: 600;
+        cursor: pointer; -webkit-tap-highlight-color: transparent;
+        text-decoration: none; text-align: center;
       }
-      .btn:active {
-        transform: scale(0.97);
-      }
-      .btn-menu {
-        background: #e50914;
-        color: #ffffff;
-      }
-      .btn-wifi {
-        background: #2a2a3e;
-        color: #aaa;
-        border: 1px solid #333;
-      }
-      .note {
-        color: #555;
-        font-size: 12px;
-        margin-top: 28px;
-      }
+      .btn:active { transform: scale(0.97); }
+      .btn-menu { background: #e50914; color: #ffffff; }
+      .btn-wifi { background: #2a2a3e; color: #aaa; border: 1px solid #333; }
+      .note { color: #555; font-size: 12px; margin-top: 28px; }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="logo">1 Cinemas</div>
       <p class="subtitle">Free WiFi</p>
-      <button class="btn btn-menu" id="menuBtn">Open Food &amp; Drinks Menu</button>
-      <button class="btn btn-wifi" id="wifiBtn">Just Connect WiFi</button>
+      <!-- Native <a> tags — CNA may allow user-tapped links to HTTP URLs
+           even though it blocks JS-driven navigation (location.href, form.submit) -->
+      <a id="menuBtn" class="btn btn-menu" href="#">Open Food &amp; Drinks Menu</a>
+      <a id="wifiBtn" class="btn btn-wifi" href="#">Just Connect WiFi</a>
       <p class="note">WiFi connects automatically when you open the menu</p>
       <div id="debug" style="color:#0f0;font-family:monospace;font-size:12px;margin-top:20px;word-break:break-all;text-align:left;background:#000;padding:12px;border-radius:8px;max-height:50vh;overflow-y:auto;"></div>
     </div>
-
-    <!-- Hidden form: native GET submission bypasses CNA JS-nav restrictions -->
-    <form id="authForm" method="GET" style="display:none">
-      <input type="hidden" name="username" value="guest" />
-      <input type="hidden" name="password" value="guest" />
-      <input type="hidden" name="redirect" id="f_redirect" value="" />
-      <input type="hidden" name="ssid" id="f_ssid" value="" />
-    </form>
 
     <script>
       (function () {
@@ -106,9 +60,6 @@
         var goUrl = 'https://1cinemas.netlify.app/go.html';
 
         // --- DNS FIX ---
-        // cwp.gwnportal.cloud resolves to a public IP where port 8080
-        // is closed. Replace with the AP's actual local IP using ap_mac.
-        // NOTE: Set static DHCP reservations on Sophos for these MACs.
         var apIpMap = {
           'EC-74-D7-27-A5-DC': '10.0.0.148',
           'EC-74-D7-27-A8-C8': '10.0.0.155',
@@ -120,85 +71,42 @@
         var apIp = apIpMap[apMac] || '';
         if (apIp && loginUrl.indexOf('cwp.gwnportal.cloud') !== -1) {
           loginUrl = loginUrl.replace('cwp.gwnportal.cloud', apIp);
-          log('<b style="color:cyan">DNS FIX: replaced cwp.gwnportal.cloud → ' + apIp + '</b>');
+          log('<b style="color:cyan">DNS FIX: ' + apMac + ' → ' + apIp + '</b>');
         } else if (!apIp && apMac) {
           log('<b style="color:red">WARNING: ap_mac ' + apMac + ' not in IP map!</b>');
         }
 
+        function buildAuthUrl(redirectTo) {
+          if (!loginUrl) return '#';
+          return loginUrl +
+            '?username=' + encodeURIComponent('guest') +
+            '&password=' + encodeURIComponent('guest') +
+            '&redirect=' + encodeURIComponent(redirectTo) +
+            '&ssid=' + encodeURIComponent(ssid);
+        }
+
         log('isAndroid: <b>' + isAndroid + '</b>');
         log('login_url: <b>' + (loginUrl || 'EMPTY') + '</b>');
-        log('ssid: ' + (ssid || 'EMPTY'));
         log('ap_mac: ' + (apMac || 'EMPTY'));
 
-        // --- CONNECTIVITY TEST ---
-        // Check if login_url is reachable BEFORE user taps anything
+        // --- SET HREF DIRECTLY ON <a> TAGS ---
+        var menuBtn = document.getElementById('menuBtn');
+        var wifiBtn = document.getElementById('wifiBtn');
+
         if (loginUrl) {
-          log('Testing connectivity to login_url...');
-          var testDone = false;
+          var menuAuthUrl = buildAuthUrl(isAndroid ? goUrl : menuUrl);
+          var wifiAuthUrl = buildAuthUrl('');
 
-          // Method 1: fetch
-          try {
-            fetch(loginUrl, { mode: 'no-cors', cache: 'no-store' })
-              .then(function () {
-                if (!testDone) { testDone = true; log('<b style="color:lime">CONNECTIVITY: fetch OK (reachable)</b>'); }
-              })
-              .catch(function (e) {
-                if (!testDone) { testDone = true; log('<b style="color:red">CONNECTIVITY: fetch FAILED - ' + e.message + '</b>'); }
-              });
-          } catch (e) {
-            log('fetch not supported: ' + e.message);
-          }
+          menuBtn.href = menuAuthUrl;
+          wifiBtn.href = wifiAuthUrl;
 
-          // Method 2: image probe (backup)
-          var testImg = new Image();
-          testImg.onload = function () {
-            if (!testDone) { testDone = true; log('<b style="color:lime">CONNECTIVITY: img OK</b>'); }
-          };
-          testImg.onerror = function () {
-            if (!testDone) { testDone = true; log('<b style="color:orange">CONNECTIVITY: img error (may still be reachable)</b>'); }
-          };
-          testImg.src = loginUrl + '?_probe=' + Date.now();
-
-          // Timeout
-          setTimeout(function () {
-            if (!testDone) { testDone = true; log('<b style="color:red">CONNECTIVITY: TIMEOUT 6s - login_url NOT reachable!</b>'); }
-          }, 6000);
+          log('menuBtn href set: ' + menuAuthUrl.substring(0, 80) + '...');
+          log('wifiBtn href set: ' + wifiAuthUrl.substring(0, 80) + '...');
+        } else {
+          log('<b style="color:red">No login_url — buttons disabled</b>');
         }
 
-        // --- FORM SETUP ---
-        var form = document.getElementById('authForm');
-        form.action = loginUrl;
-        document.getElementById('f_ssid').value = ssid;
-
-        function submitAuth(redirectTo) {
-          document.getElementById('f_redirect').value = redirectTo;
-          log('Submitting form to: ' + form.action);
-          log('redirect=' + redirectTo);
-          form.submit();
-        }
-
-        // --- MENU BUTTON ---
-        document.getElementById('menuBtn').addEventListener('click', function () {
-          log('<b>--- MENU CLICKED ---</b>');
-          if (!loginUrl) { log('<b style="color:red">ABORT: no login_url</b>'); return; }
-
-          if (isAndroid) {
-            log('Android: form submit with redirect → go.html');
-            submitAuth(goUrl);
-          } else {
-            log('iOS: form submit with redirect → menu');
-            submitAuth(menuUrl);
-          }
-        });
-
-        // --- WIFI BUTTON ---
-        document.getElementById('wifiBtn').addEventListener('click', function () {
-          log('<b>--- WIFI CLICKED ---</b>');
-          if (!loginUrl) { log('<b style="color:red">ABORT: no login_url</b>'); return; }
-          submitAuth('');
-        });
-
-        log('<b>Ready. Tap a button. Waiting for connectivity test...</b>');
+        log('<b>Ready. Tap a button.</b>');
       })();
     </script>
   </body>
