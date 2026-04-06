@@ -106,6 +106,8 @@
 
         // OPEN MENU
         document.getElementById('menuBtn').addEventListener('click', function () {
+          var authUrl = buildAuthUrl(isAndroid ? goUrl : menuUrl);
+          alert('Going to: ' + authUrl);
           if (!loginUrl) return;
 
           if (isAndroid) {
