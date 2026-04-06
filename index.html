@@ -75,136 +75,63 @@
       <button class="btn btn-menu" id="menuBtn">Open Food &amp; Drinks Menu</button>
       <button class="btn btn-wifi" id="wifiBtn">Just Connect WiFi</button>
       <p class="note">WiFi connects automatically when you open the menu</p>
-      <div id="debug" style="color:#0f0;font-family:monospace;font-size:12px;margin-top:20px;word-break:break-all;text-align:left;background:#000;padding:12px;border-radius:8px;max-height:50vh;overflow-y:auto;"></div>
     </div>
+
+    <!--
+  Hidden form for auth submission.
+  Using a form (not window.location.href) because:
+  - iPhone CNA silently blocks JS navigation from HTTPS to HTTP
+  - Form submission bypasses this mixed-content restriction
+  - The AP's gwn_login endpoint accepts GET parameters
+-->
+    <form id="authForm" method="GET" style="display: none">
+      <input type="hidden" name="username" value="guest" />
+      <input type="hidden" name="password" value="guest" />
+      <input type="hidden" name="redirect" value="" />
+      <input type="hidden" name="ssid" value="" />
+    </form>
 
     <script>
       (function () {
-        var dbg = document.getElementById('debug');
-        var logN = 0;
-        function log(msg) {
-          logN++;
-          dbg.innerHTML += '<div>' + logN + '. ' + msg + '</div>';
-          dbg.scrollTop = dbg.scrollHeight;
-        }
-
-        // 1. Parse all params
-        var rawSearch = window.location.search;
-        var params = new URLSearchParams(rawSearch);
+        var params = new URLSearchParams(window.location.search);
         var loginUrl = params.get('login_url') || '';
         var ssid = params.get('ssid') || '';
-        var apMac = params.get('ap_mac') || '';
-        var clientMac = params.get('client_mac') || '';
         var ua = navigator.userAgent || '';
         var isAndroid = /android/i.test(ua);
+
         var menuUrl = 'http://1cinemas.co.in/POP/OrderPortal/start';
+        var goUrl = 'https://1cinemas.netlify.app/go.html';
 
-        log('UA: ' + ua);
-        log('isAndroid: <b>' + isAndroid + '</b>');
-        log('login_url: <b>' + (loginUrl || 'EMPTY!') + '</b>');
-        log('ssid: ' + (ssid || 'EMPTY'));
-        log('ap_mac: ' + (apMac || 'EMPTY'));
-        log('client_mac: ' + (clientMac || 'EMPTY'));
-        log('raw search (' + rawSearch.length + ' chars): ' + rawSearch.substring(0, 200));
+        // Pre-fill form fields
+        var form = document.getElementById('authForm');
+        form.action = loginUrl;
+        form.querySelector('[name=ssid]').value = ssid;
 
-        function buildAuthUrl(redirectTo) {
-          if (!loginUrl) return '';
-          return (
-            loginUrl +
-            '?username=' + encodeURIComponent('guest') +
-            '&password=' + encodeURIComponent('guest') +
-            '&redirect=' + encodeURIComponent(redirectTo) +
-            '&ssid=' + encodeURIComponent(ssid)
-          );
+        // Submit auth via form (works in both CNA and Android WebView)
+        function submitAuth(redirectTo) {
+          form.querySelector('[name=redirect]').value = redirectTo;
+          form.submit();
         }
 
         // OPEN MENU
         document.getElementById('menuBtn').addEventListener('click', function () {
-          log('<b>--- MENU BUTTON CLICKED ---</b>');
-
-          if (!loginUrl) {
-            log('<b style="color:red">ABORT: login_url is empty!</b>');
-            return;
-          }
-
-          var authUrl = buildAuthUrl(menuUrl);
-          log('authUrl: ' + authUrl);
+          if (!loginUrl) return;
 
           if (isAndroid) {
-            // Build intent URL
-            var intentUrl = '';
-            try {
-              var u = new URL(authUrl);
-              intentUrl = 'intent://' + u.host + u.pathname + u.search +
-                '#Intent;scheme=' + u.protocol.replace(':', '') +
-                ';package=com.android.chrome;end';
-              log('intentUrl: ' + intentUrl.substring(0, 120) + '...');
-            } catch (e) {
-              log('<b style="color:red">URL parse error: ' + e.message + '</b>');
-            }
-
-            // --- TRY 1: intent via <a> click ---
-            if (intentUrl) {
-              try {
-                log('TRY 1: creating &lt;a&gt; with intent href and clicking...');
-                var a = document.createElement('a');
-                a.href = intentUrl;
-                document.body.appendChild(a);
-                a.click();
-                log('TRY 1: a.click() executed');
-              } catch (e) {
-                log('<b style="color:red">TRY 1 error: ' + e.message + '</b>');
-              }
-            }
-
-            // --- TRY 2: window.location.href = intent ---
-            setTimeout(function () {
-              log('TRY 2: window.location.href = intent...');
-              try {
-                window.location.href = intentUrl;
-                log('TRY 2: assigned');
-              } catch (e) {
-                log('<b style="color:red">TRY 2 error: ' + e.message + '</b>');
-              }
-            }, 500);
-
-            // --- TRY 3: window.open with auth URL ---
-            setTimeout(function () {
-              log('TRY 3: window.open(authUrl, _blank)...');
-              try {
-                var w = window.open(authUrl, '_blank');
-                log('TRY 3: window.open returned: ' + (w ? 'window object' : 'null/blocked'));
-              } catch (e) {
-                log('<b style="color:red">TRY 3 error: ' + e.message + '</b>');
-              }
-            }, 1200);
-
-            // --- TRY 4: window.location.href = auth URL (old approach) ---
-            setTimeout(function () {
-              log('TRY 4: window.location.href = authUrl (direct nav)...');
-              window.location.href = authUrl;
-            }, 2500);
-
+            // Auth inside WebView, AP redirects to go.html after auth
+            // go.html fires intent:// to open Chrome with menu
+            submitAuth(goUrl);
           } else {
-            // non-Android: direct redirect to auth
-            log('Non-Android: redirecting to authUrl...');
-            window.location.href = authUrl;
+            // iOS: CNA stays open, auth then redirect to menu
+            submitAuth(menuUrl);
           }
         });
 
         // JUST WIFI
         document.getElementById('wifiBtn').addEventListener('click', function () {
-          log('<b>--- WIFI BUTTON CLICKED ---</b>');
-          if (!loginUrl) {
-            log('<b style="color:red">ABORT: login_url is empty!</b>');
-            return;
-          }
-          var url = buildAuthUrl('');
-          log('Navigating to: ' + url);
-          window.location.href = url;
+          if (!loginUrl) return;
+          submitAuth('');
         });
-
-        log('<b>Ready. Tap a button.</b>');
       })();
     </script>
   </body>

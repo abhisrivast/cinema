@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <script>
-      // This page loads AFTER authentication is complete.
-      // Fire intent INSTANTLY — before Android kills the WebView.
-      // No delay, no body render, no waiting.
+      // This page loads AFTER the AP has authenticated the user.
+      // MAC is already whitelisted. Internet works.
+      // Fire intent INSTANTLY to open Chrome with the menu.
       var ua = navigator.userAgent || '';
       if (/android/i.test(ua)) {
         window.location.replace(
