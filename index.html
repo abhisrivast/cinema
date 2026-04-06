@@ -84,34 +84,46 @@
         var ssid = params.get('ssid') || '';
         var ua = navigator.userAgent || '';
         var isAndroid = /android/i.test(ua);
-
         var menuUrl = 'http://1cinemas.co.in/POP/OrderPortal/start';
-        var goUrl = 'https://1cinemas.netlify.app/go.html';
 
         function buildAuthUrl(redirectTo) {
           if (!loginUrl) return '';
           return (
             loginUrl +
-            '?username=' +
-            encodeURIComponent('guest') +
-            '&password=' +
-            encodeURIComponent('guest') +
-            '&redirect=' +
-            encodeURIComponent(redirectTo) +
-            '&ssid=' +
-            encodeURIComponent(ssid)
+            '?username=' + encodeURIComponent('guest') +
+            '&password=' + encodeURIComponent('guest') +
+            '&redirect=' + encodeURIComponent(redirectTo) +
+            '&ssid=' + encodeURIComponent(ssid)
           );
         }
 
+        // Convert http(s) URL → intent:// URI that opens Chrome
+        function toIntent(httpUrl) {
+          try {
+            var u = new URL(httpUrl);
+            return 'intent://' + u.host + u.pathname + u.search +
+              '#Intent;scheme=' + u.protocol.replace(':', '') +
+              ';package=com.android.chrome;end';
+          } catch (e) {
+            return httpUrl;
+          }
+        }
+
+        // OPEN MENU
         document.getElementById('menuBtn').addEventListener('click', function () {
           if (!loginUrl) return;
           if (isAndroid) {
-            window.location.href = buildAuthUrl(goUrl);
+            // INTENT-FIRST: open Chrome with the auth URL BEFORE auth.
+            // Chrome (real browser) does the auth and survives.
+            // WebView closes harmlessly in background after auth.
+            window.location.href = toIntent(buildAuthUrl(menuUrl));
           } else {
+            // iOS CNA stays open after auth — direct redirect works
             window.location.href = buildAuthUrl(menuUrl);
           }
         });
 
+        // JUST WIFI
         document.getElementById('wifiBtn').addEventListener('click', function () {
           if (!loginUrl) return;
           window.location.href = buildAuthUrl('');
