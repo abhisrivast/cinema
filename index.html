@@ -130,6 +130,9 @@
 
         console.log('login_url:', loginUrl);
         console.log('isAndroid:', isAndroid);
+
+        document.getElementById('debug').textContent =
+          'PARAMS: ' + window.location.search + ' | login_url: ' + loginUrl;
       })();
     </script>
   </body>
