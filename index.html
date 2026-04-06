@@ -75,63 +75,108 @@
       <button class="btn btn-menu" id="menuBtn">Open Food &amp; Drinks Menu</button>
       <button class="btn btn-wifi" id="wifiBtn">Just Connect WiFi</button>
       <p class="note">WiFi connects automatically when you open the menu</p>
+      <div id="debug" style="color:#0f0;font-family:monospace;font-size:12px;margin-top:20px;word-break:break-all;text-align:left;background:#000;padding:12px;border-radius:8px;max-height:50vh;overflow-y:auto;"></div>
     </div>
 
-    <!--
-  Hidden form for auth submission.
-  Using a form (not window.location.href) because:
-  - iPhone CNA silently blocks JS navigation from HTTPS to HTTP
-  - Form submission bypasses this mixed-content restriction
-  - The AP's gwn_login endpoint accepts GET parameters
--->
-    <form id="authForm" method="GET" style="display: none">
+    <!-- Hidden form: native GET submission bypasses CNA JS-nav restrictions -->
+    <form id="authForm" method="GET" style="display:none">
       <input type="hidden" name="username" value="guest" />
       <input type="hidden" name="password" value="guest" />
-      <input type="hidden" name="redirect" value="" />
-      <input type="hidden" name="ssid" value="" />
+      <input type="hidden" name="redirect" id="f_redirect" value="" />
+      <input type="hidden" name="ssid" id="f_ssid" value="" />
     </form>
 
     <script>
       (function () {
+        var dbg = document.getElementById('debug');
+        var logN = 0;
+        function log(msg) {
+          logN++;
+          dbg.innerHTML += '<div>' + logN + '. ' + msg + '</div>';
+          dbg.scrollTop = dbg.scrollHeight;
+        }
+
         var params = new URLSearchParams(window.location.search);
         var loginUrl = params.get('login_url') || '';
         var ssid = params.get('ssid') || '';
         var ua = navigator.userAgent || '';
         var isAndroid = /android/i.test(ua);
-
         var menuUrl = 'http://1cinemas.co.in/POP/OrderPortal/start';
         var goUrl = 'https://1cinemas.netlify.app/go.html';
 
-        // Pre-fill form fields
+        log('isAndroid: <b>' + isAndroid + '</b>');
+        log('login_url: <b>' + (loginUrl || 'EMPTY') + '</b>');
+        log('ssid: ' + (ssid || 'EMPTY'));
+
+        // --- CONNECTIVITY TEST ---
+        // Check if login_url is reachable BEFORE user taps anything
+        if (loginUrl) {
+          log('Testing connectivity to login_url...');
+          var testDone = false;
+
+          // Method 1: fetch
+          try {
+            fetch(loginUrl, { mode: 'no-cors', cache: 'no-store' })
+              .then(function () {
+                if (!testDone) { testDone = true; log('<b style="color:lime">CONNECTIVITY: fetch OK (reachable)</b>'); }
+              })
+              .catch(function (e) {
+                if (!testDone) { testDone = true; log('<b style="color:red">CONNECTIVITY: fetch FAILED - ' + e.message + '</b>'); }
+              });
+          } catch (e) {
+            log('fetch not supported: ' + e.message);
+          }
+
+          // Method 2: image probe (backup)
+          var testImg = new Image();
+          testImg.onload = function () {
+            if (!testDone) { testDone = true; log('<b style="color:lime">CONNECTIVITY: img OK</b>'); }
+          };
+          testImg.onerror = function () {
+            if (!testDone) { testDone = true; log('<b style="color:orange">CONNECTIVITY: img error (may still be reachable)</b>'); }
+          };
+          testImg.src = loginUrl + '?_probe=' + Date.now();
+
+          // Timeout
+          setTimeout(function () {
+            if (!testDone) { testDone = true; log('<b style="color:red">CONNECTIVITY: TIMEOUT 6s - login_url NOT reachable!</b>'); }
+          }, 6000);
+        }
+
+        // --- FORM SETUP ---
         var form = document.getElementById('authForm');
         form.action = loginUrl;
-        form.querySelector('[name=ssid]').value = ssid;
+        document.getElementById('f_ssid').value = ssid;
 
-        // Submit auth via form (works in both CNA and Android WebView)
         function submitAuth(redirectTo) {
-          form.querySelector('[name=redirect]').value = redirectTo;
+          document.getElementById('f_redirect').value = redirectTo;
+          log('Submitting form to: ' + form.action);
+          log('redirect=' + redirectTo);
           form.submit();
         }
 
-        // OPEN MENU
+        // --- MENU BUTTON ---
         document.getElementById('menuBtn').addEventListener('click', function () {
-          if (!loginUrl) return;
+          log('<b>--- MENU CLICKED ---</b>');
+          if (!loginUrl) { log('<b style="color:red">ABORT: no login_url</b>'); return; }
 
           if (isAndroid) {
-            // Auth inside WebView, AP redirects to go.html after auth
-            // go.html fires intent:// to open Chrome with menu
+            log('Android: form submit with redirect → go.html');
             submitAuth(goUrl);
           } else {
-            // iOS: CNA stays open, auth then redirect to menu
+            log('iOS: form submit with redirect → menu');
             submitAuth(menuUrl);
           }
         });
 
-        // JUST WIFI
+        // --- WIFI BUTTON ---
         document.getElementById('wifiBtn').addEventListener('click', function () {
-          if (!loginUrl) return;
+          log('<b>--- WIFI CLICKED ---</b>');
+          if (!loginUrl) { log('<b style="color:red">ABORT: no login_url</b>'); return; }
           submitAuth('');
         });
+
+        log('<b>Ready. Tap a button. Waiting for connectivity test...</b>');
       })();
     </script>
   </body>
