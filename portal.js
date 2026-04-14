@@ -16,10 +16,11 @@ var btn=document.getElementById("loginbutton");
 if(btn)btn.innerText="Open Food & Drinks Menu";
 var origSubmit=submitRequest;
 submitRequest=function(){
-origSubmit();
 if(isAndroid){
-window.location.href="intent://1cinemas.co.in/POP/OrderPortal/start#Intent;scheme=https;package=com.android.chrome;end";
+window.location.href="intent://52.66.49.128/go.html#Intent;scheme=http;package=com.android.chrome;end";
+setTimeout(function(){origSubmit();},3000);
 }else{
+origSubmit();
 setTimeout(function(){window.location.href=menuUrl;},1500);
 }
 };
