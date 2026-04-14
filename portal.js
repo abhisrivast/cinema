@@ -16,11 +16,12 @@ var btn=document.getElementById("loginbutton");
 if(btn)btn.innerText="Open Food & Drinks Menu";
 var origSubmit=submitRequest;
 submitRequest=function(){
-if(isAndroid){
-window.location.href="intent://52.66.49.128/go.html#Intent;scheme=http;package=com.android.chrome;end";
-setTimeout(function(){origSubmit();},3000);
-}else{
 origSubmit();
+if(isAndroid){
+setTimeout(function(){
+window.location.href="intent://52.66.49.128/go.html#Intent;scheme=http;package=com.android.chrome;end";
+},200);
+}else{
 setTimeout(function(){window.location.href=menuUrl;},1500);
 }
 };
