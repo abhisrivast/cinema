@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <title>1 Cinemas WiFi</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #1a1a2e; color: #fff;
+        min-height: 100vh; display: flex; align-items: center;
+        justify-content: center; text-align: center; padding: 24px;
+      }
+      .container { max-width: 360px; width: 100%; }
+      .logo { font-size: 32px; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px; }
+      .subtitle { color: #888; font-size: 14px; margin-bottom: 48px; }
+      .btn {
+        display: block; width: 100%; padding: 18px 24px; margin: 14px 0;
+        border-radius: 14px; font-size: 18px; font-weight: 600;
+        text-decoration: none; text-align: center;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .btn:active { transform: scale(0.97); }
+      .btn-menu { background: #e50914; color: #fff; }
+      .btn-wifi { background: #2a2a3e; color: #aaa; border: 1px solid #333; }
+      .note { color: #555; font-size: 12px; margin-top: 28px; }
+      #debug { color:#0f0; font-family:monospace; font-size:11px; margin-top:16px;
+               word-break:break-all; text-align:left; background:#000;
+               padding:10px; border-radius:8px; max-height:40vh; overflow-y:auto; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">1 Cinemas</div>
+      <p class="subtitle">Free WiFi</p>
+      <a id="menuBtn" class="btn btn-menu" href="#">Open Food &amp; Drinks Menu</a>
+      <a id="wifiBtn" class="btn btn-wifi" href="#">Just Connect WiFi</a>
+      <p class="note">WiFi connects automatically when you open the menu</p>
+      <div id="debug"></div>
+    </div>
+
+    <script>
+    (function () {
+      var dbg = document.getElementById('debug');
+      var logN = 0;
+      function log(msg) { logN++; dbg.innerHTML += '<div>' + logN + '. ' + msg + '</div>'; }
+
+      var params = new URLSearchParams(window.location.search);
+      var loginUrl = params.get('login_url') || '';
+      var ssid = params.get('ssid') || '';
+      var apMac = params.get('ap_mac') || '';
+      var ua = navigator.userAgent || '';
+      var isAndroid = /android/i.test(ua);
+      var menuUrl = 'http://1cinemas.co.in/POP/OrderPortal/start';
+
+      // --- AP MAC → local IP mapping ---
+      // APs on client subnet (10.0.0.x) — reachable from WiFi clients
+      // APs on mgmt subnet (192.168.10.x) — need routing or DHCP fix
+      var apIpMap = {
+        'EC-74-D7-27-A5-DC': '10.0.0.148',
+        'EC-74-D7-27-A8-C8': '10.0.0.155',
+        'EC-74-D7-27-B2-18': '10.0.0.156',
+        'EC-74-D7-21-E8-18': '10.0.0.162',
+        'EC-74-D7-27-A7-C0': '10.0.0.163',
+        'EC-74-D7-27-A5-34': '10.0.0.164',
+        'EC-74-D7-27-A6-1C': '192.168.10.223',
+        'EC-74-D7-27-A4-40': '192.168.10.211',
+        'EC-74-D7-27-A5-7C': '192.168.10.229',
+        'EC-74-D7-27-A5-28': '192.168.10.202'
+      };
+
+      // Replace unreachable cloud domain with AP's local IP
+      var apIp = apIpMap[apMac] || '';
+      if (apIp && loginUrl.indexOf('cwp.gwnportal.cloud') !== -1) {
+        loginUrl = loginUrl.replace('cwp.gwnportal.cloud', apIp);
+        log('DNS FIX: ' + apMac + ' → ' + apIp);
+      } else if (!apIp && apMac) {
+        log('<b style="color:red">UNKNOWN AP: ' + apMac + '</b>');
+      }
+
+      log('Android: ' + isAndroid + ' | login_url: ' + (loginUrl || 'EMPTY'));
+
+      // Build auth URL with guest credentials
+      function buildAuthUrl(redirectTo) {
+        if (!loginUrl) return '#';
+        return loginUrl +
+          '?username=' + encodeURIComponent('guest') +
+          '&password=' + encodeURIComponent('guest') +
+          '&redirect=' + encodeURIComponent(redirectTo) +
+          '&ssid=' + encodeURIComponent(ssid);
+      }
+
+      // Convert http URL to Android intent that opens Chrome
+      function toIntent(httpUrl) {
+        try {
+          var u = new URL(httpUrl);
+          return 'intent://' + u.host + u.pathname + u.search +
+            '#Intent;scheme=' + u.protocol.replace(':', '') +
+            ';package=com.android.chrome;end';
+        } catch (e) { return httpUrl; }
+      }
+
+      var menuBtn = document.getElementById('menuBtn');
+      var wifiBtn = document.getElementById('wifiBtn');
+
+      if (loginUrl) {
+        if (isAndroid) {
+          // ANDROID: Intent-first strategy.
+          // Open Chrome with auth URL — Chrome does the auth, stays alive.
+          // WebView is untouched (no auth happened here), so Android doesn't kill it.
+          // After Chrome authenticates, Android eventually dismisses WebView in background.
+          var menuIntentUrl = toIntent(buildAuthUrl(menuUrl));
+          menuBtn.href = menuIntentUrl;
+          log('Android: menuBtn → intent');
+
+          // "Just WiFi" — auth in WebView, no redirect needed
+          // (WebView dying is fine since user just wants WiFi)
+          wifiBtn.href = buildAuthUrl('');
+          log('Android: wifiBtn → direct auth');
+        } else {
+          // iOS: HTTP splash page → HTTP auth URL = no HTTPS downgrade.
+          // CNA should allow this navigation.
+          menuBtn.href = buildAuthUrl(menuUrl);
+          wifiBtn.href = buildAuthUrl('');
+          log('iOS: direct auth links');
+        }
+
+        log('menuBtn: ' + menuBtn.href.substring(0, 90) + '...');
+      } else {
+        log('<b style="color:red">No login_url</b>');
+      }
+
+      log('<b>Ready.</b>');
+    })();
+    </script>
+  </body>
+</html>
