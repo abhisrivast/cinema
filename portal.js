@@ -17,18 +17,11 @@ if(btn)btn.innerText="Open Food & Drinks Menu";
 var origSubmit=submitRequest;
 submitRequest=function(){
 origSubmit();
-var check=setInterval(function(){
-var creds=document.getElementById("credentials");
-if(creds&&creds.classList.contains("loggedin")){
-clearInterval(check);
 if(isAndroid){
 window.location.href="intent://1cinemas.co.in/POP/OrderPortal/start#Intent;scheme=https;package=com.android.chrome;end";
-setTimeout(function(){window.location.href=menuUrl;},800);
 }else{
-window.location.href=menuUrl;
+setTimeout(function(){window.location.href=menuUrl;},1500);
 }
-}
-},200);
 };
 },500);
 });
